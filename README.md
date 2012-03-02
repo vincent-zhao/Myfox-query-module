@@ -1,6 +1,7 @@
 ## 简介：
 
 myfox查询模块是一个**分布式mysql查询层**。使用nodejs实现。你可以用myfox查询模块查询分布式数据库中的数据。
+关于myfox的实际应用场景和简单的架构介绍，可以见此文 http://www.tbdata.org/archives/1789
 
 ## 准备：
 1. node的版本在0.6.7以上（包括0.6.7）
