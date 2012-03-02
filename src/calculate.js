@@ -137,30 +137,30 @@ calc.prototype.getData = function(cb){
 function _mergeInit(info){
   var merge = DataMerge.create();
   if (info.distinct){
-	  merge.setDistinct(info.distinct);
+    merge.setDistinct(info.distinct);
   }
-	if (info.limits) {
-		merge.setLimit(info.limits['offset'], info.limits['length']);
-	}
-	if (!empty(info.groups)) {
-		merge.setGroupBy(info.groups);
-	}
-	if (!empty(info.orders)) {
-		merge.setSortKey(info.orders);
-	}
-	var output = info.columns;
-	var evals  = [];
-	var groups = [];
-	var hidden = [];
-	for (var key in output) {
-		var opt = output[key];
-		opt.expr  && (evals[key] = opt.expr);
-		opt.merge && (groups[key] = opt.merge);
-		opt.hide  && (hidden[key] = opt.hide);
-	}
-	merge.setEvals(evals);
-	merge.setMerge(groups);
-	merge.setHidden(hidden);
+  if (info.limits) {
+    merge.setLimit(info.limits['offset'], info.limits['length']);
+  }
+  if (!empty(info.groups)) {
+    merge.setGroupBy(info.groups);
+  }
+  if (!empty(info.orders)) {
+    merge.setSortKey(info.orders);
+  }
+  var output = info.columns;
+  var evals  = [];
+  var groups = [];
+  var hidden = [];
+  for (var key in output) {
+    var opt = output[key];
+    opt.expr  && (evals[key] = opt.expr);
+    opt.merge && (groups[key] = opt.merge);
+    opt.hide  && (hidden[key] = opt.hide);
+  }
+  merge.setEvals(evals);
+  merge.setMerge(groups);
+  merge.setHidden(hidden);
   return merge;
 }
 /*}}}*/

@@ -47,35 +47,35 @@ function cacheKey(str) {
  * @return void
  */
 var cacheShell = function(str){
-    Events.EventEmitter.call(this);
-    var _self = this;
-    var canEmit = true;
-    var timeout = setTimeout(function(){
-        canEmit = false;
+  Events.EventEmitter.call(this);
+  var _self = this;
+  var canEmit = true;
+  var timeout = setTimeout(function(){
+    canEmit = false;
+    _self.emit('noData');
+  },1000);
+  cache.get(cacheKey(str),function(res){
+
+    var wrong = false;
+    try{
+      var res = JSON.parse(unescape(res));
+    }catch(e){
+      wrong = true;
+    }
+    //console.log(res);
+
+    if ( !wrong && res && res.data && res.data.length > 0) {
+      if(canEmit){
+        clearTimeout(timeout);
+        _self.emit('getData', res);
+      }
+    }else{
+      if(canEmit){
+        clearTimeout(timeout);
         _self.emit('noData');
-    },1000);
-    cache.get(cacheKey(str),function(res){
-
-        var wrong = false;
-        try{
-          var res = JSON.parse(unescape(res));
-        }catch(e){
-          wrong = true;
-        }
-        //console.log(res);
-
-        if ( !wrong && res && res.data && res.data.length > 0) {
-            if(canEmit){
-                clearTimeout(timeout);
-                _self.emit('getData', res);
-            }
-        }else{
-            if(canEmit){
-                clearTimeout(timeout);
-                _self.emit('noData');
-            }
-        }
-    });
+      }
+    }
+  });
 }
 Util.inherits(cacheShell, Events.EventEmitter);
 /*}}}*/
@@ -225,13 +225,13 @@ function calc(route, cKey){
     }
     if(route.reqObj.isDebug){
       res = {
-          data        : res,
-          msg         : err.toString(),
-          route       : route.res.route,
-          columns     : route.res.columns,
-          routeTime   : route.routeTime,
-          getResDebug : debugInfo,
-        };
+        data        : res,
+        msg         : err.toString(),
+        route       : route.res.route,
+        columns     : route.res.columns,
+        routeTime   : route.routeTime,
+        getResDebug : debugInfo,
+      };
     }else{
       res = { data : res , msg : err};
     }
@@ -254,12 +254,12 @@ function calc(route, cKey){
  * 心跳函数，向master发送心跳
  */
 setInterval(function(){
-    var info = {
-        type : "hb",
-        handleNum : server.connections,
-        pid : process.pid
-    }
-    process.send(info);
+  var info = {
+    type : "hb",
+    handleNum : server.connections,
+    pid : process.pid
+  }
+  process.send(info);
 },workerConf.hbInterval);
 /*}}}*/
 

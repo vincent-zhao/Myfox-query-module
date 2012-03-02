@@ -432,50 +432,50 @@ function exhaust(min,max,ins,type){
  * @return {Array}
  */
 function range(min,max,type,step){
-	var res = [];
-	if(!type){type = 0;}
-	else{type = parseInt(type);}
-	if(type == RANGE_NUMBER){
-		if(min > max){return [];}
-		res = [];
-		for(var i = min;i<=max;i+=step){
-			res.push(i);
-		}
-		return res;
-	}
-	if(type == RANGE_STRING){
-		var begIdx = alphIdx[min];
-		var endIdx = alphIdx[max];
-		if(begIdx > endIdx){return [];}
-		for(var i = begIdx;i <= endIdx;i++){
-			res.push(alphArr[i]);
-		}
-		return res;
-	}
-	
-	if(type == RANGE_DATE){
-		if(min.match(/\d{4}-\d{2}-\d{2}/ig) !== null){
-			var eles = min.split("-");
-			min = new Date(eles[0],parseInt(eles[1],10)-1,parseInt(eles[2],10));
-		}else{
-			var m = min.substring(4,6);
-			min = new Date(min.substring(0,4),parseInt(m,10)-1,parseInt(min.substring(6,8),10));
-		}
-		if(max.match(/\d{4}-\d{2}-\d{2}/ig) !== null){
-			var eles = max.split("-");
-			max = new Date(eles[0],parseInt(eles[1],10)-1,parseInt(eles[2],10));
-		}else{
-			var m = max.substring(4,6);
-			max = new Date(max.substring(0,4),parseInt(m,10)-1,parseInt(max.substring(6,8),10));
-		}
-		var beg = min < max ? min : max;
-		var end = max > min ? max : min;
-		while(beg <= end){
-			res.push(dateFormat(beg));
-            beg.setDate(beg.getDate()+1);
-		}
-		return res;
-	}
+  var res = [];
+  if(!type){type = 0;}
+  else{type = parseInt(type);}
+  if(type == RANGE_NUMBER){
+    if(min > max){return [];}
+    res = [];
+    for(var i = min;i<=max;i+=step){
+      res.push(i);
+    }
+    return res;
+  }
+  if(type == RANGE_STRING){
+    var begIdx = alphIdx[min];
+    var endIdx = alphIdx[max];
+    if(begIdx > endIdx){return [];}
+    for(var i = begIdx;i <= endIdx;i++){
+      res.push(alphArr[i]);
+    }
+    return res;
+  }
+
+  if(type == RANGE_DATE){
+    if(min.match(/\d{4}-\d{2}-\d{2}/ig) !== null){
+      var eles = min.split("-");
+      min = new Date(eles[0],parseInt(eles[1],10)-1,parseInt(eles[2],10));
+    }else{
+      var m = min.substring(4,6);
+      min = new Date(min.substring(0,4),parseInt(m,10)-1,parseInt(min.substring(6,8),10));
+    }
+    if(max.match(/\d{4}-\d{2}-\d{2}/ig) !== null){
+      var eles = max.split("-");
+      max = new Date(eles[0],parseInt(eles[1],10)-1,parseInt(eles[2],10));
+    }else{
+      var m = max.substring(4,6);
+      max = new Date(max.substring(0,4),parseInt(m,10)-1,parseInt(max.substring(6,8),10));
+    }
+    var beg = min < max ? min : max;
+    var end = max > min ? max : min;
+    while(beg <= end){
+      res.push(dateFormat(beg));
+      beg.setDate(beg.getDate()+1);
+    }
+    return res;
+  }
 }
 /*}}}*/
 
@@ -513,24 +513,24 @@ function getArray(data,key,type){
  * @return {String || int} 处理后数据
  */
 function increase(data,step,type){
-	if(type == RANGE_DATE){
-		data += "";
-		if(data.length<8){
-			data = "19700101";
-		}
-		if(data.match(/\d{4}-\d{1,2}-\d{1,2}/ig) != null){
-			var d = data.split("-");
-			var dat = new Date(d[0],parseInt(d[1],10)-1,parseInt(d[2],10)+step);
-			return dateFormat(dat); 
-		}else{
-			var y = data.substring(0,4);
-			var m = data.substring(4,6);
-			var d = data.substring(6,8);
-			var dat = new Date(y,parseInt(m,10)-1,parseInt(d,10)+step);	
-			return dateFormat(dat); 
-		}
-	}
-	return parseInt(data)+step;
+  if(type == RANGE_DATE){
+    data += "";
+    if(data.length<8){
+      data = "19700101";
+    }
+    if(data.match(/\d{4}-\d{1,2}-\d{1,2}/ig) != null){
+      var d = data.split("-");
+      var dat = new Date(d[0],parseInt(d[1],10)-1,parseInt(d[2],10)+step);
+      return dateFormat(dat); 
+    }else{
+      var y = data.substring(0,4);
+      var m = data.substring(4,6);
+      var d = data.substring(6,8);
+      var dat = new Date(y,parseInt(m,10)-1,parseInt(d,10)+step);	
+      return dateFormat(dat); 
+    }
+  }
+  return parseInt(data)+step;
 }
 /*}}}*/
 
@@ -541,12 +541,12 @@ function increase(data,step,type){
  * @return {String}
  */
 function dateFormat(d){
-	var y = d.getFullYear();
-	var tmp  = d.getMonth()+1;
-	var m = tmp < 10 ? "0" + tmp : tmp;
-	tmp = d.getDate();
-	var dat = tmp < 10 ? "0" + tmp : tmp;
-	return ""+y+m+dat;
+  var y = d.getFullYear();
+  var tmp  = d.getMonth()+1;
+  var m = tmp < 10 ? "0" + tmp : tmp;
+  tmp = d.getDate();
+  var dat = tmp < 10 ? "0" + tmp : tmp;
+  return ""+y+m+dat;
 }
 /*}}}*/
 
@@ -557,10 +557,10 @@ function dateFormat(d){
  * @return {boolean}
  */
 function is_static(token){
-	if(token.match(/^[a-z_]/i) === null){
-		return false;
-	}
-	return true;
+  if(token.match(/^[a-z_]/i) === null){
+    return false;
+  }
+  return true;
 }
 /*}}}*/
 
@@ -586,8 +586,8 @@ util.inherits(Counter, events.EventEmitter);
 
 exports.dealRequest = dealRequest;
 exports.cleanTable = function(){
-    dataloader.reLoadTable();
+  dataloader.reLoadTable();
 }
 exports.cleanRouteInfo = function(){
-    routecalc.cleanRouteInfo();
+  routecalc.cleanRouteInfo();
 }
