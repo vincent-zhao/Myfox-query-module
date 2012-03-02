@@ -5,7 +5,7 @@ myfox查询模块是一个**分布式mysql查询层**。使用nodejs实现。你
 ## 准备：
 1. node的版本在0.6.7以上（包括0.6.7）
 2. 你必须有可以访问的mysql服务器(在运行myfox查询模块的服务的机器上需要安装一个mysql服务器，这是为了运行我们的demo程序来测试你是否已经安装myfox查询模块成功)。
-3. myfox查询模块只提供查询服务，所以你必须已经将数据导入到mysql数据库中，导入的方法请点击这里。(下面提供了myfox查询模块的demo测试，这个测试不需要先装载数据)
+3. myfox查询模块只提供查询服务，所以你必须已经将数据导入到mysql数据库中，导入的方法请点击这里https://github.com/vincent-zhao/Myfox-load-module (下面提供了myfox查询模块的demo测试，这个测试不需要先装载数据)
 4. 你必须提供可用的memcache服务器。
 5. 如果你是ubuntu用户，请注意，ubuntu默认启动dash，不是bash。所以需要输入下面命令：
   sudo dpkg-reconfigure dash（选择"否"）
