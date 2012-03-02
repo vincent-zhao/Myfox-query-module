@@ -65,16 +65,6 @@
 
 data字段是一个数组，数组中每个元素都代表一行数据。a:1表示这一行数据中，列名为a的值是1。
 
-**[{a:1,b:2}，{a:4,b:6}]** 表示的数据如下表格：
-
--------------------------
-|     a     |     b     |
--------------------------
-|     1     |     2     |
--------------------------
-|     4     |     6     |
--------------------------
-
 
 如何配置myfox
 ===================================
@@ -84,88 +74,88 @@ data字段是一个数组，数组中每个元素都代表一行数据。a:1表�
 
 路由获取类的配置：
 
-  module.exports = {
-    routeTable : { //路由表信息
-      dbname : 'meta_myfox_config',//路由表所在数据库
-      table_prefix : 'dev_', //路由表前缀
-      table_name : "route_info", //固定路由表名字
-      useSuffix : true, //路由表是否有后缀名（后缀名由计算所得）
-    },
-    mysql   : {
-      master: [{ // 主数据库
-        poolSize : 10, // 连接池大小
-        timeout  : 1000 * 10, // 请求超时时间
-        slow     : 1000 * 2, // 慢请求阈值
-        connInfo : { // mysql服务器的连接信息
-          conn_host : '1.1.1.1',
-          conn_user : 'username',
-          conn_port : '3306',
-          conn_pass : 'password',
-          conn_db   : 'dbname',
-        }
+    module.exports = {
+      routeTable : { //路由表信息
+        dbname : 'meta_myfox_config',//路由表所在数据库
+        table_prefix : 'dev_', //路由表前缀
+        table_name : "route_info", //固定路由表名字
+        useSuffix : true, //路由表是否有后缀名（后缀名由计算所得）
       },
-      ],
-      slave : [{ //从数据库
-        poolSize : 10, // 连接池大小
-        timeout  : 1000 * 10, // 请求超时时间
-        slow     : 1000 * 2, // 慢日志阈值
-        connInfo : { // mysql服务器连接信息
-          conn_host : '1.1.1.1',
-          conn_user : 'username',
-          conn_port : '3306',
-          conn_pass : 'password',
-          conn_db   : 'dbname',
-        }
-      },
-      ],
-   }
-  };
+      mysql   : {
+        master: [{ // 主数据库
+          poolSize : 10, // 连接池大小
+          timeout  : 1000 * 10, // 请求超时时间
+          slow     : 1000 * 2, // 慢请求阈值
+          connInfo : { // mysql服务器的连接信息
+            conn_host : '1.1.1.1',
+            conn_user : 'username',
+            conn_port : '3306',
+            conn_pass : 'password',
+            conn_db   : 'dbname',
+          }
+        },
+        ],
+        slave : [{ //从数据库
+          poolSize : 10, // 连接池大小
+          timeout  : 1000 * 10, // 请求超时时间
+          slow     : 1000 * 2, // 慢日志阈值
+          connInfo : { // mysql服务器连接信息
+            conn_host : '1.1.1.1',
+            conn_user : 'username',
+            conn_port : '3306',
+            conn_pass : 'password',
+            conn_db   : 'dbname',
+          }
+        },
+        ],
+     }
+    };
 
 **memcache_config.js:**
 
 memcache配置：
 
-  module.exports = {
-    serverList : [ // memcache服务器列表
-      'localhost:11211'
-    ],
-    opt : {
-      poolsize : 20 // memcache连接池大小
+    module.exports = {
+      serverList : [ // memcache服务器列表
+        'localhost:11211'
+      ],
+      opt : {
+        poolsize : 20 // memcache连接池大小
+      }
     }
-  }
 
 **mysqlloader_config.js:**
 
 取数据（非路由数据）模块的配置：
 
-  module.exports = {
-    poolSize : 10, // mysql数据库连接池大小
-    timeout : 1000 * 10 // 请求超时时间
-    slow : 1000 * 2 // 慢日志阈值
-  }
+    module.exports = {
+      poolSize : 10, // mysql数据库连接池大小
+      timeout : 1000 * 10 // 请求超时时间
+      slow : 1000 * 2 // 慢日志阈值
+    }
 
 **master_config.js:**
 
 master配置：
 
-  module.exports = {
-    address : "0.0.0.0", // 用默认值，不要修改
-    port : 9222, // 服务端口
-    workerPath: __dirname+"/../app/worker.js", // worker目录，不要修改
-    workerNum: 4, // 启动的worker数量，和cpu有关，一个worker是一个进程。
-    logPath : __dirname+"/../log/", //日志路径，不建议修改
-    logLevel : Log.NOTICE + Log.WARNING + Log.ERROR, // 日志级别设置，有五种级别:Log.INFO,Log.DEBUG,Log.NOTICE,Log.WARNING,Log.ERROR.
-    userPort : 9223,// myfox的debug页面接口
-    adminPwd: '52.....94' // 这个发布版本无用，不要修改
-  }
+    module.exports = {
+      address : "0.0.0.0", // 用默认值，不要修改
+      port : 9222, // 服务端口
+      workerPath: __dirname+"/../app/worker.js", // worker目录，不要修改
+      workerNum: 4, // 启动的worker数量，和cpu有关，一个worker是一个进程。
+      logPath : __dirname+"/../log/", //日志路径，不建议修改
+      logLevel : Log.NOTICE + Log.WARNING + Log.ERROR, // 日志级别设置，有五种级别:Log.INFO,Log.DEBUG,Log.NOTICE,Log.WARNING,Log.ERROR.
+      userPort : 9223,// myfox的debug页面接口
+      adminPwd: '52.....94' // 这个发布版本无用，不要修改
+    }
 
 **worker_config.js:**
 
 worker配置：
 
-  module.exports = {
-    logPath : __dirname + "/../log", // 日志路径，不建议修改
-    logLevel : Log.DEBUG + Log.NOTICE + Log.WARNING + Log.ERROR, // 日志级别设置，和master中一样
-    hbInterval : 2000,// 心跳建个，不建议修改
-    lcacheLength : 1000,// 本地缓存长度，视路由库复杂程度而定
-  }
+    module.exports = {
+      logPath : __dirname + "/../log", // 日志路径，不建议修改
+      logLevel : Log.DEBUG + Log.NOTICE + Log.WARNING + Log.ERROR, // 日志级别设置，和master中一样
+      hbInterval : 2000,// 心跳建个，不建议修改
+      lcacheLength : 1000,// 本地缓存长度，视路由库复杂程度而定
+    }
