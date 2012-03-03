@@ -19,7 +19,7 @@ myfox查询模块是一个**分布式mysql查询层**。使用nodejs实现。你
 在使用myfox查询模块之前，你必须了解myfox查询模块的数据接口。数据接口的详细介绍见**DIRECTIONS.md**文件的**输入输出数据接口说明**部分
 
 ## 安装:
-1. 在myfox查询模块目录下用npm安装libmysqlclient（npm install libmysqlclient）
+1. 在myfox查询模块目录下用npm安装libmysqlclient（npm install mysql-libmysqlclient）
 
 ## 运行：
 你可以直接在myfox查询模块根目录下运行**startup.sh**脚本来启动myfox查询模块服务。
