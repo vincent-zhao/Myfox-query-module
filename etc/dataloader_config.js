@@ -11,7 +11,7 @@ module.exports = {
         timeout  : 10, // 请求超时时间
         slow     : 1000 * 2, // 慢查询时间阈值
         connInfo : { // mysql服务器的连接信息
-          conn_host : '127.0.0.1',//mysql服务器地址
+          conn_host : '',//mysql服务器地址
           conn_user : '',//用户名
           conn_port : '3306',//端口号
           conn_pass : '',//密码
@@ -24,7 +24,7 @@ module.exports = {
         timeout  : 10, // 请求超时时间
         slow     : 1000 * 2, // 慢查询时间阈值
         connInfo : { // mysql服务器的连接信息
-          conn_host : '127.0.0.1',//mysql服务器地址
+          conn_host : '',//mysql服务器地址
           conn_user : '',//用户名
           conn_port : '3306',//端口号
           conn_pass : '',//密码

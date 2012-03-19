@@ -3,6 +3,6 @@ module.exports = {
       'localhost:11211',
     ],
     opt : {
-       poolSize : 20, // memcache连接池大小
+       poolSize : 20,// memcache连接池大小
     }
 };
