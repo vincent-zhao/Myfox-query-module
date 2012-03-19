@@ -11,17 +11,16 @@
  Last Modified: 2012-02-20
 */
 
+require('../lib/env.js')
 var events = require('events');
 var lexterTypes = require('../lib/parser/lexter').types;
 var NumType = lexterTypes.NUMBER;
 var StringType = lexterTypes.STRING;
 var Select = require('../lib/parser/select');
 var Reform = require('../lib/reform');
-dataloader = require("../lib/dataloader.js");
+var dataloader = factory.getDataLoader();
 var conf = require('../etc/dataloader_config.js');
-dataloader.init(conf);
 
-var render = require('../lib/render');
 var util = require('util');
 var Hashes = require('../lib/rules/hashes');
 var Mirror = require('../lib/rules/mirror');
@@ -29,9 +28,14 @@ var Numsplit = require('../lib/rules/numsplit');
 var Decare = require('../lib/decare');
 var routecalc = require('../lib/routecalc');
 
-var RANGE_NUMBER = 0;
-var RANGE_DATE = 1;
-var RANGE_STRING = 2;
+var NUMBER= 0;
+var DATE = 1;
+var STRING = 2;
+
+var TYPE = {
+  "date" : DATE,
+  "int" : NUMBER 
+}
 
 var alphIdx = {a:0,b:1,c:2,d:3,e:4,f:5,g:6,h:7,i:8,j:9,k:10,l:11,m:12,n:13,o:14,p:15,q:16,r:17,s:18,t:19,u:20,v:21,w:22,x:23,y:24,z:25};
 var alphArr = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'];
@@ -50,7 +54,7 @@ function dealRequest(reqObj,cb){
       var query = Select.create(sql);
       var parts = query.get();
     }catch(e){
-      cb(sql + " is wrong during being parsed");
+      cb("'" + sql + "' is wrong during being parsed");
       return;
     }
     var hasTable = false;
@@ -59,7 +63,7 @@ function dealRequest(reqObj,cb){
       break;
     }
     if(!hasTable){
-      cb(sql + " doesn't contain any table");
+      cb("'" + sql + "' doesn't contain any table");
       return;
     }
     var mergedTable = [];
@@ -127,7 +131,7 @@ function getTableNodes(tables,parts,reqObj,cb){
     cols = hashes[alias];
     var type,min,max,ins,dt,get;
     for(var col in cols){
-      type = cols[col];
+      type = TYPE[cols[col].toLowerCase()];
       if(!usefulFields[alias] || !usefulFields[alias][col]){
         cb("Field \""+col+"\" is required for table \""+alias+"\"");
         return;
@@ -175,11 +179,14 @@ function getTableNodes(tables,parts,reqObj,cb){
       cb("get routeInfo wrong");
       return;
     }
-    for(var tbname in tbnode){
-      if(tbnode[tbname].length == 0){
-        cb("table \""+tbname+"\" has no routeInfo");
-        return;
-      }
+    var exist = false;
+    for(var i in tbnode){
+      exist = true;
+      break;
+    }
+    if(!exist){
+      cb("no any routeinfo for certain route val");
+      return;
     }
     reformAll(reqObj,parts,tbnode,cb);
   });
@@ -190,7 +197,7 @@ function getTableNodes(tables,parts,reqObj,cb){
     if(routeMap[i].tableInfo.route_type === routecalc.ROUTE.MIRROR || !routeMap[i].tableInfo.routeFields){
       (function(){
         var tbn = routeMap[i].tableInfo.table_name;
-        routecalc.findNodes(routeMap[i],null,function(err,data){
+        routecalc.findNodes(reqObj,routeMap[i],null,function(err,data){
           if(err){
             counter.succeed = false;
           }else{
@@ -204,7 +211,7 @@ function getTableNodes(tables,parts,reqObj,cb){
       for(var j = 0;j < len; j++){
         (function(){
           var tbn = routeMap[i].tableInfo.table_name;
-          routecalc.findNodes(routeMap[i],routeMap[i].decareRes[j],function(err,data){
+          routecalc.findNodes(reqObj,routeMap[i],routeMap[i].decareRes[j],function(err,data){
             if(err){
               counter.succeed = false;
             }else{
@@ -269,7 +276,7 @@ function getFields(where,fields){
     if(tn && !fields[tn]){continue;}
     if(!is_static(cn)){continue;}
     var tb = tn ? [tn] : allTab;
-    for(var alias in tb){
+    for(alias in tb){
       var tbn = tb[alias];
       if(fields[tbn][cn]!==0 && !fields[tbn][cn]){continue;}
       if(!res[tbn]){res[tbn] = [];}
@@ -302,18 +309,20 @@ function demarcate(routeKey,type,f){
     limit = routeKey[i];
     limitRelate = limit["relate"];
     limitVals = limit["values"];
-    limitValsOne = limitVals[0];
-    limitValsOneText = limitValsOne.text;
-    limitValsOneType = limitValsOne.type;
+    for(var j = 0;j < limitVals.length;j++){
+      if(limitVals[j].type !== NumType && limitVals[j].type !== StringType){
+        throw new Error("Route field \""+f+"\" must be a static value")
+      }
+    }
     switch(limitRelate){
       case Select.WHERE.IN:
         var tmp = getArray(limitVals,"text",type);
         if(ins.length == 0){ins = tmp;}
         else{
           var t = [];
-          for(var i = 0;i < ins.length;i++){
-            for(var j = 0;j < tmp.length;j++){
-              if(ins[i] === tmp[j]){t.push(ins[i]);}
+          for(var j = 0;j < ins.length;j++){
+            for(var k = 0;k < tmp.length;k++){
+              if(ins[j] === tmp[k]){t.push(ins[j]);}
             }
           }
           ins = t;
@@ -321,38 +330,28 @@ function demarcate(routeKey,type,f){
         break;
 
       case Select.WHERE.EQ:
-        if(limitValsOneType != NumType && limitValsOneType != StringType){
-          throw new Error("Route field \""+f+"\" must be a static value");
-        }else{
-          var txt = increase(limitValsOneText,0,type);
-          if(ins.length == 0){ins = [txt];}
-          else{
-            var t = [];
-            for(var i = 0;i < ins.length;i++){
-              if(ins[i] === txt){t.push(txt);}
-            }
-            ins = t;
+        var txt = increase(limitVals[0].text,0,type);
+        if(ins.length == 0){ins = [txt];}
+        else{
+          var t = [];
+          for(var j = 0;j < ins.length;j++){
+            if(ins[j] === txt){t.push(txt);}
           }
+          ins = t;
         }
         break;
 
       case Select.WHERE.GT:
       case Select.WHERE.GE:
         var off = (limitRelate == Select.WHERE.GT) ? 1 : 0;
-        if(limitValsOneType != NumType && limitValsOneType != StringType){
-          throw new Error("Route field \""+f+"\" must be a static value");
-        }
-        var tmp = increase(limitValsOneText,off,type);
+        var tmp = increase(limitVals[0].text,off,type);
         min = min===null ? tmp : ((min > tmp) ? min : tmp);
         break;
 
       case Select.WHERE.LT:
       case Select.WHERE.LE:
         var off = (limitRelate == Select.WHERE.LT) ? -1 : 0;
-        if(limitValsOneType != NumType && limitValsOneType != StringType){
-          throw new Error("Route field \""+f+"\" must be a static value");
-        }
-        var tmp = increase(limitValsOneText,off,type);
+        var tmp = increase(limitVals[0].text,off,type);
         max = max===null ? tmp : ((max > tmp) ? tmp : max);
         break;
 
@@ -382,11 +381,11 @@ function demarcate(routeKey,type,f){
  * @return {Array || false} 有数据返回Array，没有返回false
  */
 function exhaust(min,max,ins,type){
-  if(!type){type = RANGE_NUMBER;}
+  if(!type){type = NUMBER;}
   var v = (ins.length === 0) ? false : ins;
   var tmp,r;
   if(min !== null && max !== null){
-    tmp = range(min,max,range_type_map[type],1);
+    tmp = range(min,max,type,1);
     if(v === false){return tmp;}
     r = [];
     var tmpLen = tmp.length;
@@ -435,7 +434,7 @@ function range(min,max,type,step){
   var res = [];
   if(!type){type = 0;}
   else{type = parseInt(type);}
-  if(type == RANGE_NUMBER){
+  if(type == NUMBER){
     if(min > max){return [];}
     res = [];
     for(var i = min;i<=max;i+=step){
@@ -443,7 +442,7 @@ function range(min,max,type,step){
     }
     return res;
   }
-  if(type == RANGE_STRING){
+  if(type == STRING){
     var begIdx = alphIdx[min];
     var endIdx = alphIdx[max];
     if(begIdx > endIdx){return [];}
@@ -453,23 +452,12 @@ function range(min,max,type,step){
     return res;
   }
 
-  if(type == RANGE_DATE){
-    if(min.match(/\d{4}-\d{2}-\d{2}/ig) !== null){
-      var eles = min.split("-");
-      min = new Date(eles[0],parseInt(eles[1],10)-1,parseInt(eles[2],10));
-    }else{
-      var m = min.substring(4,6);
-      min = new Date(min.substring(0,4),parseInt(m,10)-1,parseInt(min.substring(6,8),10));
-    }
-    if(max.match(/\d{4}-\d{2}-\d{2}/ig) !== null){
-      var eles = max.split("-");
-      max = new Date(eles[0],parseInt(eles[1],10)-1,parseInt(eles[2],10));
-    }else{
-      var m = max.substring(4,6);
-      max = new Date(max.substring(0,4),parseInt(m,10)-1,parseInt(max.substring(6,8),10));
-    }
-    var beg = min < max ? min : max;
-    var end = max > min ? max : min;
+  if(type == DATE){
+    min = new Date(min.substring(0,4),parseInt(min.substring(4,6),10)-1,parseInt(min.substring(6,8),10));
+    max = new Date(max.substring(0,4),parseInt(max.substring(4,6),10)-1,parseInt(max.substring(6,8),10));
+    if(max < min){return [];}
+    var beg = min; 
+    var end = max;
     while(beg <= end){
       res.push(dateFormat(beg));
       beg.setDate(beg.getDate()+1);
@@ -513,7 +501,7 @@ function getArray(data,key,type){
  * @return {String || int} 处理后数据
  */
 function increase(data,step,type){
-  if(type == RANGE_DATE){
+  if(type == DATE){
     data += "";
     if(data.length<8){
       data = "19700101";
@@ -576,8 +564,8 @@ function Counter(totalNum){
   self.totalNum = totalNum;
   self.on("reached",function(){
     if(--self.totalNum === 0){
-    self.emit("all_reached");
-  }
+      self.emit("all_reached");
+    }
   });
 }
 /*}}}*/

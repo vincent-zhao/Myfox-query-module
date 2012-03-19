@@ -5,15 +5,16 @@
   modify it under the terms of the GNU General Public License 
   version 2 as published by the Free Software Foundation.
   
-  File: master.js
+  File: worker.js
   Author: yixuan,xuyi (yixuan.zzq@taobao.com,xuyi.zl@taobao.com)
-  Description: myfox worker管理部分
+  Description: myfox请求处理主程序
   Last Modified: 2012-02-03
 */
 
 var TCP  = process.binding("tcp_wrap").TCP;
 var cp   = require("child_process");
 var Conf = require("../etc/master_config");
+var WorkerConf = require("../etc/worker_config");
 var Log  = require("../lib/log");
 var http = require("http");
 var fs   = require("fs");
@@ -30,6 +31,14 @@ var userSrv;
 var page;
 var workers = [];
 var logger = Log.create(Conf.logLevel, Conf.logPath, "master");
+
+var waitToConnectWorker = 1000;
+var pos = 0;
+
+var monitorUserMap = {};
+var monitorToken = 0;
+
+var startServerTime = new Date().getTime();
 
 /*{{{ readFile() */
 /**
@@ -60,7 +69,7 @@ var readFile = function(files) {
         fread(file);
       }
     });
-  };
+};
   var i;
   // run all files
   for (i = 0; i < files.length; i++) {
@@ -71,6 +80,42 @@ var readFile = function(files) {
 };
 
 page = readFile([__dirname + "/pages/nodefox.html"]);
+/*}}}*/
+
+/*{{{ writeFile()*/
+/**
+ * 写state文件
+ * @param {String} filePath state文件路径
+ * @param {String} key 写入state文件的具体字段名
+ * @param {String} content 写入内容
+ * @return void
+ */
+function writeFile(filePath,key,content){
+  var get = fs.readFileSync(filePath).toString();
+  var obj;
+  if(get === ""){obj = {};}
+  else{obj = JSON.parse(get);}
+  obj[key] = content;
+  fs.writeFileSync(filePath,JSON.stringify(obj));
+}
+/*}}}*/
+
+/* {{{read and write init states into statefile*/
+try{
+  var get = fs.readFileSync(Conf.statesFile).toString();
+  if(!get || get === ""){
+    throw new Error();
+  }
+}catch(e){
+  fs.writeFileSync(Conf.statesFile,"");
+  var dat = new Date();
+  var year = dat.getFullYear().toString();
+  var month = dat.getMonth()+1;
+  month = month < 10 ? "0" + month.toString() : month.toString();
+  var d = dat.getDate();
+  d = d < 10 ? "0" + d.toString() : d.toString();
+  writeFile(Conf.statesFile,"sqlCacheVersion",year + month + d);
+}
 /*}}}*/
 
 /*{{{ chooseWorker()*/
@@ -107,10 +152,12 @@ function chooseWorker() {
  * @return void
  */
 function onconnection(handle) {
+  //  console.log('onconnection'+new Date().getTime());
   var getWorker = chooseWorker();
   getWorker.send({
     "handle": true
-  },handle);
+  },
+  handle);
   getWorker.handleNum++;
   handle.close();
 }
@@ -124,17 +171,17 @@ function onconnection(handle) {
  */
 function startWorker(num) {
   for (var i = 0; i < num; i++) { 
-    (function() {
-     var w = cp.fork(WORKER_PATH);
-     w.handleNum = 0;
-     workers[w.pid] = w;
-     w.on("message", workerListener);
-     w.on("exit", function(code) {
-       logger.error("worker down", "worker" + w.pid + " falls down with code " + code);
-       delete workers[w.pid];
-       startWorker(1);
-       });
-     })();
+  (function() {
+    var w = cp.fork(WORKER_PATH);
+    w.handleNum = 0;
+    workers[w.pid] = w;
+    w.on("message", workerListener);
+    w.on("exit", function(code) {
+      logger.error("worker down", "worker" + w.pid + " falls down with code " + code);
+      delete workers[w.pid];
+      startWorker(1);
+    });
+  })();
   }
 }
 /*}}}*/
@@ -169,6 +216,8 @@ function startUserInterface(port){
           'Content-Length': p.length
         });
         res.end(p);
+      }else{
+        res.end();
       }
     }else{
       var body = "";
@@ -192,7 +241,7 @@ function startUserInterface(port){
             res.end(d);
           });
         });
-        req.write(encodeURIComponent("false"+sep+"true\r\nsqlMode\r\n"+get.sql+"\r\n"));
+        req.write(encodeURIComponent(get.readCache + sep + get.writeCache + sep + get.isDebug + sep + get.explain + "\r\nsqlMode\r\n"+get.sql+"\r\n"));
         req.end();
       });
     }

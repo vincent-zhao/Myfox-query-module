@@ -6,7 +6,7 @@
  version 2 as published by the Free Software Foundation.
 
  File: calculate.js
- Author: xuyi (xuyi.zl@taobao.com)
+ Author: xuyi,yixuan.zzq (xuyi.zl@taobao.com,yixuan.zzq@taobao.com)
  Description: 数据加载及计算
  Last Modified: 2012-02-20
 */
@@ -23,30 +23,34 @@ var MysqlLoader = factory.getMysqlLoader();
  * @return {None}
  */
 var calc = function(req, cb){
-  this.route = req.res; 
-  this.control = req.reqObj;
+  this.route = req.res;
+  this.reqObj = req.reqObj;
   this.merge = _mergeInit(req.res); 
   this.cb = cb;
-  this.debugInfo = {}; /*debug信息*/
+  this.debugInfo = {};
 }
 /*}}}*/
 
 /* {{{ function calc.exec()*/
 /**
- * 
  *数据加载&整合计算 主函数
  * @return {None}
  */
 calc.prototype.exec = function(){
   var _self = this;
   var res = '';
-  _self.getData(function(err,res){
+  _self.getData(function(err,res,r){
     if(err){
       _self.cb(err, '');
       return;
     }
     res = _getMerge(_self.merge, res);
-    _self.cb('', _self.format(res), _self.debugInfo);
+    if(_self.reqObj.explain){
+      _self.getExplain(r,_self.format(res),_self.debugInfo);
+    }else{
+      _self.cb('',_self.format(res),_self.debugInfo);
+    }
+    //_self.cb('', res);
   });
 }
 /*}}}*/
@@ -93,7 +97,7 @@ function _getMerge(merge, data){
 }
 /*}}}*/
 
-/*{{{ function getData()*/
+/*{{{ function _getData()*/
 /**
  * 获取数据
  * @param  {Function} cb 
@@ -105,8 +109,13 @@ calc.prototype.getData = function(cb){
   var num = route.route.length;
   var ret = [];
   var isReturned = false;
+  var expire = null;
   _self.debugInfo.splitData = [];
-  MysqlLoader.getData(route,function(err, res , debug){
+  var maxLenRoute = {
+    len : 0,
+    route : undefined
+  }
+  MysqlLoader.getData(route,function(err, res , debug, r){
     num --;
     if(isReturned){
       return;
@@ -116,15 +125,50 @@ calc.prototype.getData = function(cb){
       isReturned = true;
       return;
     }
-    if(_self.control.isDebug){
+    if(res.length === 0){
+      expire = 5*60; //如果有分片为空，设置总缓存过期时间为5分钟
+    }
+    if(res.length > maxLenRoute.len || maxLenRoute.route === undefined){
+      maxLenRoute.len = res.length;
+      maxLenRoute.route = r;
+    }
+    if(_self.reqObj.isDebug){
       _self.debugInfo.splitData.push({info:debug,data:res});
     }
     ret.push(res);
     if( !num ){
       isReturned = true;
-      cb('', ret);
+      cb('', ret, maxLenRoute.route, expire);
     }
-  },_self.control.isDebug,_self.control.useCache);
+  },_self.reqObj);
+}
+/*}}}*/
+
+/*{{{ function getExplain()*/
+/**
+ * 获得explain信息
+ * @param {Object} route 查询explain信息的路由对象
+ * @param {Object} data 原始sql的结果，用于查好explain信息一起传回
+ * @param {Object} debugData 原始sqldebug信息
+ * @param void
+ */
+calc.prototype.getExplain = function(route,data,debugData){
+  var _self = this;
+  if(route === undefined){
+    _self.cb("no explain","");
+    return;
+  }
+  MysqlLoader.getExplain(route,function(err,res){
+    if(err){
+      _self.cb(err,'');
+      return;
+    }
+    var explainData = {
+      sql:route.sql,
+      data:res
+    }
+    _self.cb("",data,debugData,explainData);
+  });
 }
 /*}}}*/
 

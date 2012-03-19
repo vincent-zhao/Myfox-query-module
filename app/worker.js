@@ -10,74 +10,35 @@
   Description: myfox请求处理主程序
   Last Modified: 2012-02-03
 */
-
 require('../lib/env');
-
-var net    = require('net');
-var http   = require('http');
-var Calc   = require('../src/calculate');
-var Hash   = require('../lib/hash');
-var parse  = require('../lib/parse')
-var render = require('../lib/render');
-var Mcache = require('../lib/cache/mcache.js');
+var net         = require('net');
+var http        = require('http');
+var fs          = require('fs');
+var Calc        = require('../src/calculate');
+var Hash        = require('../lib/hash');
+var parse       = require('../lib/parse')
+var Mcache      = require('../lib/cache/mcache.js');
 var requestDealer = require('../src/requestDealer');
+var masterConf  = require('../etc/master_config.js');
+var util = require('util');
+
 
 var cache = factory.getMcache();
+var keyVersion  = "";
 
-/* {{{ cacheKey()*/
+/*{{{ cacheKey()*/
 /**
  * 生成cache键
  * @param {String} str 原始的键
  * @return {String} 
  */
 function cacheKey(str) {
-  workerConf.mcachePrefix = 'workerCache';
-	str = workerConf.mcachePrefix + ':data:' + encodeURI(str);
+	str = workerConf.mcachePrefix + keyVersion + ':data:' + encodeURI(str);
   if(str.length > 250){
     str = 'Hash{' + Hash.md5(str) + Hash.fnv(str) + '}';
   }
 	return str;
 }
-/* }}}*/
-
-/*{{{ cacheShell()*/
-/**
- * cache壳，判断cache是否有效或者存在
- * @param {String} str 需要查询的字符串
- * @return void
- */
-var cacheShell = function(str){
-  Events.EventEmitter.call(this);
-  var _self = this;
-  var canEmit = true;
-  var timeout = setTimeout(function(){
-    canEmit = false;
-    _self.emit('noData');
-  },1000);
-  cache.get(cacheKey(str),function(res){
-
-    var wrong = false;
-    try{
-      var res = JSON.parse(unescape(res));
-    }catch(e){
-      wrong = true;
-    }
-    //console.log(res);
-
-    if ( !wrong && res && res.data && res.data.length > 0) {
-      if(canEmit){
-        clearTimeout(timeout);
-        _self.emit('getData', res);
-      }
-    }else{
-      if(canEmit){
-        clearTimeout(timeout);
-        _self.emit('noData');
-      }
-    }
-  });
-}
-Util.inherits(cacheShell, Events.EventEmitter);
 /*}}}*/
 
 /*{{{ setCache()*/
@@ -89,7 +50,7 @@ Util.inherits(cacheShell, Events.EventEmitter);
  * @return void
  */
 function setCache(key,data,ttl){
-    cache.set(cacheKey(key), escape(JSON.stringify(data)), ttl);
+  cache.set(cacheKey(key), escape(JSON.stringify(data)), ttl);
 }
 /*}}} */
 
@@ -99,12 +60,25 @@ var exit_timer      = null;
 var child_req_count = 0;
 var cached_req_count = 0;
 var now_req_count = 0;
-var period_count = 0;
-var period_interval_minute = 30;
-var allUseTime = 0;
 var queryQueue = [];
-var period_situation = [];
-var period_situation_length = 24;
+
+/*{{{ readStatesFile()*/
+/**
+ * 读取state文件并设置统一缓存key前缀（run目录下）
+ * @param {String} file state文件名
+ * @return void
+ */
+function readStatesFile(file){
+  var get = JSON.parse(fs.readFileSync(file).toString());
+  keyVersion = get["sqlCacheVersion"];
+}
+readStatesFile(masterConf.statesFile);
+fs.watchFile(masterConf.statesFile,function(curr,prev){
+  if(curr.mtime.getTime() !== prev.mtime.getTime()){
+    readStatesFile(masterConf.statesFile);
+  }
+});
+/*}}}*/
 
 /*{{{ onhandle()*/
 /**
@@ -124,6 +98,7 @@ function onhandle(self, handle){
   socket.server = self;
   self.emit("connection", socket);
   socket.emit("connect");
+//  console.log("get a connection");
 }
 /*}}}*/
 
@@ -142,50 +117,60 @@ server = http.createServer(function(req, res){
       data += chunk;
     });
     req.on("end",function(){
-      period_count++;
       child_req_count++;
       now_req_count++;
 
-      var start = Date.now();
       var parseData = parse(data);
+      parseData.pid = process.pid;
+      parseData.token = process.pid.toString() + "&" + child_req_count.toString();
+
+      workerLogger.notice( 'getQuery|token:' + parseData.token + '[' + req.connection.remoteAddress + ']',JSON.stringify(parseData));
+
       var key = parseData.sql.replace(/ /g, '') + JSON.stringify(parseData.params);
+      parseData.key = key;
+      parseData.res = res;
+      parseData.start = Date.now();
 
       if(queryQueue[key]){
-        queryQueue[key].push({res:res,startTime:start});
-        workerLogger.notice('QueryMerged' + process.pid + '[' + req.connection.remoteAddress + ']',JSON.stringify(parseData));
+        queryQueue[key].push(parseData);
         return;
       }else{
-        queryQueue[key] = [{res:res,startTime:start}];
+        queryQueue[key] = [parseData];
       }
 
-      workerLogger.notice( 'getQuery_' + process.pid + '[' + req.connection.remoteAddress + ']',JSON.stringify(parseData));
-
-      if(USECACHE && parseData.useCache){
-        var cacheGeter = new cacheShell(key); 
-        cacheGeter.on('getData',function(d){
-          cached_req_count++;
-          writeBack(key, JSON.stringify(d));
-        });
-        cacheGeter.on('noData',function(){
-          requestDealer.dealRequest(parseData,function(err,route){
-            if(err){
-              workerLogger.warning("ROUTE_WRONG",err);
-              writeBack(key, JSON.stringify({msg:err, data:[]}));
-              return;
+      if(READCACHE && parseData.readCache){
+      //if(false){
+        cache.get(cacheKey(key),function(res){
+            var wrong = false;
+            try{
+              res = JSON.parse(unescape(res));
+            }catch(e){
+              wrong = true;
             }
-            route.routeTime = (Date.now() - start) / 1000;
-            calc(route,key);
-          });
+            if ( !wrong && res && res.data && res.data.length > 0) {
+              cached_req_count++;
+              writeBack(parseData, JSON.stringify(res));
+            }else{
+              requestDealer.dealRequest(parseData,function(err,route){
+                if(err){
+                  workerLogger.warning("ROUTE_WRONG|token:"+parseData.token,err);
+                  writeBack(parseData, JSON.stringify({msg:err, data:[]}));
+                  return;
+                }
+                route.routeTime = (Date.now() - parseData.start) / 1000;
+                calc(route,res);
+              });
+            }
         });
       }else{
         requestDealer.dealRequest(parseData,function(err,route){
           if(err){
-            workerLogger.warning("ROUTE_WRONG",err);
-            writeBack(key, JSON.stringify({msg:err, data:[]}));
+            workerLogger.warning("ROUTE_WRONG|token:"+parseData.token,err);
+            writeBack(parseData, JSON.stringify({msg:err, data:[]}));
             return;
           }
-          route.routeTime = (Date.now() - start) / 1000;
-          calc(route, key);
+          route.routeTime = (Date.now() - parseData.start) / 1000;
+          calc(route, res);
         });
       }
     });
@@ -196,42 +181,40 @@ server = http.createServer(function(req, res){
 /*{{{ writeBack()*/
 /**
  * 写回数据给用户
- * @param {String} key 请求key，用于削峰策略 
+ * @param {String} parseData 请求对象，用于削峰策略 
  * @param {String} data 写回的数据
  * @return void
  */
-function writeBack(key, data){
-  queryQueue[key].forEach(function(res){
+function writeBack(parseData, data){
+  queryQueue[parseData.key].forEach(function(res){
     now_req_count--;
-    allUseTime += (Date.now() - res.startTime);
-    workerLogger.notice('RES', JSON.stringify({timeUse:Date.now() - res.startTime,length:data.length,key:key}));
+    workerLogger.notice('RES|token:'+res.token, JSON.stringify({timeUse:Date.now() - res.start,length:data.length}));
     res.res.end(data); 
   });
-  delete queryQueue[key];
+  delete queryQueue[parseData.key];
 }
 /*}}}*/
 
 /*{{{ calc()*/
 /**
  * 分片数据获取及处理主入口函数
- * @param {Object} route 路由结果
- * @param {String} cKey 请求的key
+ * @param {Object} route 路由和路由结果(包含路由对象和路由结果)
  * @return void
  */
-function calc(route, cKey){
-  var getRes = Calc.create(route,function(err,res,debugInfo){
+function calc(route){
+  var getRes = Calc.create(route,function(err,res,debugInfo,explainData, expire){
     if(err){
-      //errHandle(err);
     }
     if(route.reqObj.isDebug){
       res = {
-        data        : res,
-        msg         : err.toString(),
-        route       : route.res.route,
-        columns     : route.res.columns,
-        routeTime   : route.routeTime,
-        getResDebug : debugInfo,
-      };
+          data        : res,
+          msg         : err.toString(),
+          route       : route.res.route,
+          columns     : route.res.columns,
+          routeTime   : route.routeTime,
+          getResDebug : debugInfo,
+          explain     : explainData
+        };
     }else{
       res = { data : res , msg : err};
     }
@@ -241,9 +224,12 @@ function calc(route, cKey){
       route     : route.res.route,
       columns   : route.res.columns,
       routeTime : route.routeTime,
+      explain   : explainData
     }));
-    setCache(cKey, {data : res.data, msg : res.msg}, 86400);
-    writeBack(cKey, JSON.stringify(res));
+    if(route.reqObj.writeCache){
+      setCache(route.reqObj.key, {data : res.data, msg : res.msg}, expire || 86400);
+    }
+    writeBack(route.reqObj, JSON.stringify(res));
   });
   getRes.exec();
 }
