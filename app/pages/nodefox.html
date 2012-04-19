@@ -1,0 +1,238 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
+<title>nodefox</title>
+<style type="text/css">
+    body,td,input,textarea{
+        font-size:12px;
+    }
+    table {
+        width : 100%;
+        background-color : gray;
+    }
+    tr {
+        background-color : white;
+    }
+    label {
+        font-size:14px;
+        font-weight:bold;
+        margin-bottom:10px;
+    }
+    .time{
+        color:red;
+        font-weight:bold;
+    }
+    .control{
+        font-size:16px;
+        font-weight:bold;
+    }
+</style>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js" type="text/javascript"></script>
+<script type="text/javascript">
+
+function trim(str){
+  str = str.replace(/\s+/g," ");
+  var point = 0;
+  var begin = 0;
+  var res = "";
+  while(point < str.length){
+    if(str[point] === '\\'){
+      res += str.substr(begin,point-begin);
+      begin = point + 1;
+      point += 2;
+    }
+    point ++;
+  }
+  res += str.substr(begin);
+  return res;
+}
+
+function query(){
+  $("span#msg").text("");
+  $("span#state").text("");
+  $("span#state1").text("");
+  $("span#state2").text("");
+  $("span#routeinfotime").text("");
+  $("span#routeinfotime1").text("");
+  $("span#routeinfotime2").text("");
+  $("span#shardDatainfotime").text("");
+  $("span#shardDatainfotime1").text("");
+  $("span#shardDatainfotime2").text("");
+  $("table#result").empty();
+  $("table#routeResult").empty();
+  $("table#shardResult").empty();
+  $("table#columnResult").empty();
+  $("table#explainResult").empty();
+  $("span").remove("#esql");
+  var timeBegin = new Date();
+  $("textarea#input").attr('value',trim($("textarea#input").val()));
+  var msg = $("textarea#input").val();
+  $("span#state").text("waiting...");
+  $("input#q").attr({disabled:"disabled"});
+  var reqContent = {
+    readCache:($("#readCache").attr("checked") === "checked") ? true : false,
+    writeCache:($("#writeCache").attr("checked") === "checked") ? true : false,
+    explain:($("#explain").attr("checked") === "checked") ? true : false,
+    isDebug : true,
+    sql : msg
+  }
+	$.post("/",reqContent,function(data){
+		var timeEnd = new Date();
+		var get = JSON.parse(data);
+
+		if(get["msg"]){
+      $("span#msg").text(get["msg"]);
+      $("span#state").text("finished!");
+		}
+    result = get["data"];
+    if(result !== undefined){
+      var appendEle = "<tr>";
+        for(i in result[0]){
+          appendEle += "<td>"+i+"</td>"
+        }
+        appendEle += "</tr>";
+
+        for(i in result){
+          appendEle += "<tr>";
+          for(j in result[i]){
+            appendEle += "<td>"+result[i][j]+"</td>";
+          }
+          appendEle += "</tr>";
+        }
+      $("table#result").append(appendEle);
+    }
+		        
+    var getRouteInfo = get["route"];
+    if(getRouteInfo !== undefined){
+      appendEle = "<tr><td>No.</td><td>hostId</td><td>SQL</td></tr>";
+      var count = 1;
+      for(i in getRouteInfo){
+        appendEle += "<tr>";
+        appendEle += "<td>"+count+"</td>";
+        appendEle += "<td>"+getRouteInfo[i]["host"]+"</td>";
+        appendEle += "<td>"+getRouteInfo[i]["sql"]+"</td>";
+        appendEle += "</tr>";
+        count++;
+      }
+      $("table#routeResult").append(appendEle);
+    }
+
+    var getColumnInfo = get["columns"];
+    if(getColumnInfo !== undefined){
+      appendEle = "<tr><td>column name</td><td>Expression</td><td>Merge</td><td>Hidden</td></tr>";
+      for(i in getColumnInfo){
+        appendEle += "<tr>";
+        appendEle += "<td>"+i+"</td>";
+        appendEle += "<td>"+getColumnInfo[i]["expr"]+"</td>";
+        if(getColumnInfo[i]["merge"] === null){
+          appendEle += "<td>--</td>";
+        }else{
+          appendEle += "<td>"+getColumnInfo[i]["merge"]+"</td>"; 
+        }
+        if(getColumnInfo[i]["hide"]){
+          appendEle += "<td>Y</td>";
+        }else{
+          appendEle += "<td>N</td>";
+        }
+        appendEle += "</tr>";
+      }
+      $("table#columnResult").append(appendEle);
+    }
+
+    var getExplainInfo = get["explain"];
+    if(getExplainInfo !== undefined){
+      var sql = getExplainInfo["sql"];
+      var data = getExplainInfo["data"];
+      $("label#explainSql").after("<span id=\"esql\">" + sql + "</span>");
+      appendEle = "<tr><td>id</td><td>select_type</td><td>table</td><td>type</td><td>possible_keys</td><td>key</td><td>key_len</td><td>ref</td><td>rows</td><td>Extra</td></tr>";
+      for(var i = 0;i < data.length;i++){
+        appendEle += "<tr><td>" + data[i].id + "</td><td>" + data[i].select_type + "</td><td>" + data[i].table + "</td><td>" + data[i].type + "</td><td>" + data[i].possible_keys + "</td><td>" + data[i].key + "</td><td>" + data[i].key_len + "</td><td>" + data[i].ref + "</td><td>" + data[i].rows + "</td><td>" + data[i].Extra + "</td></tr>";
+      }
+      $("table#explainResult").append(appendEle);
+    }
+
+    var getShardResult = get["getResDebug"];
+    if(getShardResult !== undefined){
+      count = 0;
+      var appendEle = "";
+      try{
+        for(var i in getShardResult.splitData){
+          appendEle += "<tr><td bgcolor=\"gray\">shard"+(count++)+":</td></tr>";
+          var once = true;
+          for(var j in getShardResult.splitData[i].data){
+            if(once){
+              appendEle += "<tr>";
+              for(var k in getShardResult.splitData[i].data[j]){
+                appendEle += "<td>"+k+"</td>";
+              }
+              appendEle += "</tr>";
+              once = false;
+            }
+            appendEle += "<tr>";
+            for(var k in getShardResult.splitData[i].data[j]){
+              appendEle += "<td>"+getShardResult.splitData[i].data[j][k]+"</td>";
+            }
+            appendEle += "</tr>";
+          }
+        }
+      }catch(e){}
+      $("table#shardResult").append(appendEle);
+    }
+    $("span#state").text("finished! Use ");
+    $("span#state1").text((timeEnd-timeBegin)/1000);
+    $("span#state2").text(" seconds");
+    $("span#routeinfotime").text("Use ");
+    $("span#routeinfotime1").text(get["routeTime"]);
+    $("span#routeinfotime2").text(" seconds");
+    $("span#shardDatainfotime").text("Use ");
+    $("span#shardDatainfotime1").text(get["getDataTime"]);
+    $("span#shardDatainfotime2").text(" seconds");
+
+    $("input#q").removeAttr("disabled");
+	},'text');
+}
+</script>
+</head>
+<body>
+	<h1>NodeFox</h1>
+	<label>Input sql:</label><br/>
+	<textarea id="input" rows="10" cols="120"></textarea>
+	<br/>
+  <input id="readCache" type="checkbox" name="readCache"/><span class="control">readCache</span>
+  <input id="writeCache" type="checkbox" name="writeCache"/><span class="control">writeCache</span>
+  <input id="explain" type="checkbox" name="explain"/><span class="control">explain</span>
+  <br/><br/>
+	<input id = "q" type="submit" value="query" onclick="query()"/>
+	<br/><br/>
+	<label>msg:</label><span id="msg"></span><span id="msg1" class="time"></span>
+	<br/><br/>
+	<label>result:</label><span id="state"></span><span id="state1" class="time"></span><span id="state2"></span>
+	<br/>
+	<table id="result" border="0" cellspacing="1" cellpadding="4">
+	</table>
+  <br/><br/>
+  <label>route info:</label><span id = "routeinfotime"></span><span id = "routeinfotime1" class="time"></span><span id = "routeinfotime2"></span>
+  <br/>
+  <table id="routeResult" border="0" cellspacing="1" cellpadding="4">
+  </table>
+  <br/><br/>
+  <label>columns info:</label>
+  <br/>
+  <table id="columnResult" border="0" cellspacing="1" cellpadding="4">
+  </table>
+  <br/><br/>
+  <label>explain info:</label>
+  <br/>
+  <label id="explainSql">SQL:</label>
+  <br/>
+  <table id="explainResult" border="0" cellspacing="1" cellpadding="4">
+  </table>
+  <br/><br/>
+  <label>shard data:</label><span id = "shardDatainfotime"></span><span id = "shardDatainfotime1" class="time"></span><span id = "shardDatainfotime2"></span>
+  <br/>
+  <table id="shardResult" border="0" cellspacing="1" cellpadding="4">
+  </table>
+</body>
+</html>
+

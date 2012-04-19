@@ -1,0 +1,25 @@
+{
+  "name": "nodefox",
+  "version": "3.0.0",
+  "author": "xuyi.zl,yixuan.zzq",
+  "contributors": [
+  ],
+  "homepage": "https://github.com/vincent-zhao/Myfox-query-module",
+  "description": "A mysql layer.",
+  "keywords": [ "nodefox" ],
+  "dependencies": {
+    "node-cluster"  : ">=0.1.10"
+  },
+  "engines": {
+    "node": ">=0.6.9"
+  },
+  "devDependencies": {
+    "should"    : ">=0.4.2",
+    "mocha"     : ">=0.9.0",
+    "mysql-libmysqlclient" : "=1.2.10",
+    "jake"      : ">=0.1.14"
+  },
+  "scripts": {
+    "test": "make test"
+  }
+}
