@@ -6,6 +6,7 @@ test: conf
 
 conf:
 	@npm install -g jake
+	-mkdir conf
 	@jake 'generateConfig[$(ENV)]'
 
 clean:
