@@ -8,6 +8,7 @@
   "description": "A mysql layer.",
   "keywords": [ "nodefox" ],
   "dependencies": {
+    "mysql-libmysqlclient" : "=1.2.10",
     "node-cluster"  : ">=0.1.10"
   },
   "engines": {
@@ -16,7 +17,6 @@
   "devDependencies": {
     "should"    : ">=0.4.2",
     "mocha"     : ">=0.9.0",
-    "mysql-libmysqlclient" : "=1.2.10",
     "jake"      : ">=0.1.14"
   },
   "scripts": {
